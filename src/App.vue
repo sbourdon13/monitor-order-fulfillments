@@ -2,7 +2,31 @@
   <div id="app">
     <h1>Monitor your orders</h1>
     <!-- <b-table striped hover :items="orders"></b-table> -->
-    <b-table striped hover :items="items"></b-table>
+    <b-table striped hover :items="items" :fields="fields">
+      <template slot="show_details" slot-scope="row">
+        <b-button
+          size="sm"
+          @click="row.toggleDetails"
+          class="mr-2"
+        >{{ row.detailsShowing ? 'Hide' : 'Show'}} Details</b-button>
+      </template>
+
+      <template slot="row-details" slot-scope="row">
+        <b-card>
+          <b-row
+            class="mb-2"
+            v-for="(event, index) in ordersByReference[row.item.reference]"
+            :key="index"
+          >
+            <b-col sm="3" class="text-sm-right">
+              <b>{{ event.time.toLocaleString("en-GB") }}</b>
+            </b-col>
+            <b-col>{{ event.description }}</b-col>
+            <b-col>{{ event.status }}</b-col>
+          </b-row>
+        </b-card>
+      </template>
+    </b-table>
   </div>
 </template>
 
@@ -15,7 +39,8 @@ export default {
     return {
       ordersByReference: {}, // keys are the references, values are arrays of all order events of this reference
       orderEvents: [], // all order events
-      items: [] // orders to be displayed (one item per reference)
+      items: [], // orders to be displayed (one item per reference),
+      fields: ["reference", "operator", "description", "status", "show_details"]
     };
   },
   created() {
@@ -48,7 +73,8 @@ export default {
     },
     getOrderData(data) {
       let status, description;
-      let reference = data.payload.reference;
+      const reference = data.payload.reference;
+      const time = new Date(Date.parse(data.create_time));
 
       if (data.payload.subtype === "status_update") {
         description = data.payload.description;
@@ -61,8 +87,9 @@ export default {
       }
 
       let order = {
-        reference: reference,
         operator: data.payload.operator,
+        time,
+        reference,
         description,
         status
       };
