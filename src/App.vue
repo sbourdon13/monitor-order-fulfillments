@@ -1,7 +1,8 @@
 <template>
   <div id="app">
     <h1>Monitor your orders</h1>
-    <b-table striped hover :items="orders"></b-table>
+    <!-- <b-table striped hover :items="orders"></b-table> -->
+    <b-table striped hover :items="items"></b-table>
   </div>
 </template>
 
@@ -12,7 +13,9 @@ export default {
   name: "app",
   data() {
     return {
-      orders: []
+      ordersByReference: {}, // keys are the references, values are arrays of all order events of this reference
+      orderEvents: [], // all order events
+      items: [] // orders to be displayed (one item per reference)
     };
   },
   created() {
@@ -20,11 +23,9 @@ export default {
   },
   methods: {
     setupStream() {
-      let es = new EventSource("http://localhost:8080", {
-        withCredentials: false
-      });
+      let orderEventSource = new EventSource("http://localhost:8080");
 
-      es.addEventListener(
+      orderEventSource.addEventListener(
         "order_event",
         event => {
           let data = JSON.parse(event.data);
@@ -33,7 +34,7 @@ export default {
         false
       );
 
-      es.addEventListener(
+      orderEventSource.addEventListener(
         "error",
         event => {
           console.log("EventSource failed.");
@@ -47,6 +48,8 @@ export default {
     },
     getOrderData(data) {
       let status, description;
+      let reference = data.payload.reference;
+
       if (data.payload.subtype === "status_update") {
         description = data.payload.description;
         status = data.payload.short;
@@ -56,13 +59,24 @@ export default {
         }`;
         status = "Updating data";
       }
+
       let order = {
-        reference: data.payload.reference,
+        reference: reference,
         operator: data.payload.operator,
         description,
         status
       };
-      this.orders.push(order);
+
+      this.orderEvents.push(order);
+
+      if (this.ordersByReference[reference]) {
+        this.ordersByReference[data.payload.reference].push(order);
+        let index = this.items.findIndex(item => item.reference === reference);
+        this.items[index] = order;
+      } else {
+        this.ordersByReference[reference] = [order];
+        this.items.push(order);
+      }
     }
   }
 };
