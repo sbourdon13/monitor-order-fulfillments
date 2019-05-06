@@ -1,14 +1,23 @@
 <template>
   <div id="app">
     <h1>Monitor your orders</h1>
-    <!-- <b-table striped hover :items="orders"></b-table> -->
-    <b-table striped hover responsive :items="items" :fields="fields">
+
+    <b-table
+      striped
+      hover
+      responsive
+      small
+      :items="items"
+      :fields="fields"
+      :current-page="currentPage"
+      :per-page="perPage"
+    >
       <!-- Display badges for the status column -->
       <template slot="status" slot-scope="row">
         <b-badge :variant="badgeColors[row.item.status]">{{ row.item.statusLabel }}</b-badge>
       </template>
 
-      <!-- details of previous order events of the same reference -->
+      <!-- create a column of toggle buttons to display details  -->
       <template slot="show_details" slot-scope="row">
         <b-button
           size="sm"
@@ -17,6 +26,7 @@
         >{{ row.detailsShowing ? 'Hide' : 'Show'}} Details</b-button>
       </template>
 
+      <!-- show details of previous order events of the same reference  -->
       <template slot="row-details" slot-scope="row">
         <b-card>
           <b-row
@@ -28,11 +38,29 @@
               <b>{{ event.time.toLocaleString("en-GB") }}</b>
             </b-col>
             <b-col>{{ event.description }}</b-col>
-            <b-col>{{ event.statusLabel }}</b-col>
+            <b-col>
+              <b-badge :variant="badgeColors[event.status]">{{ event.statusLabel }}</b-badge>
+            </b-col>
           </b-row>
         </b-card>
       </template>
+
+      <template slot="table-caption">
+        <div class="mx-4">{{ items.length }} references.</div>
+      </template>
     </b-table>
+
+    <b-row>
+      <!-- <b-col md="6"  class="my-1"> -->
+      <b-col>
+        <b-pagination
+          v-model="currentPage"
+          :total-rows="items.length"
+          :per-page="perPage"
+          align="center"
+        ></b-pagination>
+      </b-col>
+    </b-row>
   </div>
 </template>
 
@@ -43,16 +71,19 @@ export default {
   name: "app",
   data() {
     return {
+      currentPage: 1,
+      perPage: 20,
+      filterStatus: "",
       ordersByReference: {}, // keys are the references, values are arrays of all order events of this reference
       orderEvents: [], // all order events
       items: [], // orders to be displayed (one item per reference),
       fields: [
-          { key: 'reference', sortable: false },
-          { key: 'operator', sortable: true },
-          { key: 'description', sortable: false },
-          { key: 'status', sortable: true },
-          { key: 'show_details', sortable: false }
-        ],
+        { key: "reference", sortable: false },
+        { key: "status", sortable: true },
+        { key: "description", sortable: false },
+        { key: "operator", sortable: true },
+        { key: "show_details", sortable: false }
+      ],
       status: {
         CREATED: "CREATED",
         TRANSMITTED: "TRANSMITTED",
