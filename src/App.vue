@@ -8,21 +8,25 @@
         :badgeColors="badgeColors"
         :ordersByReference="ordersByReference"
       ></orders-table>
+      <b-alert
+        :variant="connectionColor[eventSourceStatus]"
+        show
+      >Connection status: {{ connectionStatus[eventSourceStatus] }}</b-alert>
     </b-container>
   </div>
 </template>
 
 <script>
-/* eslint-disable no-console */
 import OrdersTable from "./components/OrdersTable.vue";
 import AppHeader from "./components/Header.vue";
+
+import ReconnectingEventSource from "reconnecting-eventsource"; //implements autoreconnection
 
 export default {
   name: "app",
   data() {
     return {
-      ordersByReference: {}, // keys are the references, values are arrays of all order events of this reference
-      orderEvents: [], // all order events (never used currently)
+      ordersByReference: {},
       statusLabels: {
         CREATED: "Created",
         TRANSMITTED: "Transmitted",
@@ -43,7 +47,15 @@ export default {
         DELIVERED: "success",
         UPDATE_DATA: "light"
       },
-      selectedStatus: "DELIVERY_EXCEPTION"
+      orderEventSource: false,
+      eventSourceStatus: null,
+      connectionStatus: [
+        "Connecting...",
+        "Connected",
+        "No connection",
+        "Error, trying to reconnect"
+      ],
+      connectionColor: ["primary", "success", "warning", "danger"]
     };
   },
   computed: {
@@ -60,9 +72,20 @@ export default {
   },
   methods: {
     setupStream() {
-      let orderEventSource = new EventSource("http://localhost:8080");
+      this.orderEventSource = new ReconnectingEventSource(
+        "http://localhost:8080",
+        {
+          withCredentials: false,
+          max_retry_time: 3000
+        }
+      );
+      this.eventSourceStatus = this.orderEventSource.readyState; // CONNECTING (0)
 
-      orderEventSource.addEventListener(
+      this.orderEventSource.onopen = event => {
+        this.eventSourceStatus = event.target.readyState; // OPEN (1)
+      };
+
+      this.orderEventSource.addEventListener(
         "order_event",
         event => {
           let data = JSON.parse(event.data);
@@ -71,17 +94,12 @@ export default {
         false
       );
 
-      orderEventSource.addEventListener(
-        "error",
-        event => {
-          console.log("EventSource failed.");
-          if (event.readyState == EventSource.CLOSED) {
-            console.log("Event was closed");
-            console.log(EventSource);
-          }
-        },
-        false
-      );
+      this.orderEventSource.onerror = event => {
+        if (event.target.readyState == EventSource.CLOSED) {
+          this.eventSourceStatus = event.target.readyState; // CLOSED (2)
+        }
+        this.eventSourceStatus = 3; // custom error status
+      };
     },
     getOrderData(data) {
       let status = data.payload.short;
@@ -111,7 +129,6 @@ export default {
         time
       };
 
-      this.orderEvents.push(order);
       this.addOrderToReferenceData(order, reference);
     },
     addOrderToReferenceData(order, reference) {

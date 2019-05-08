@@ -10,6 +10,7 @@
   "dependencies": {
     "bootstrap-vue": "^2.0.0-rc.19",
     "core-js": "^2.6.5",
+    "reconnecting-eventsource": "^1.0.2",
     "vue": "^2.6.10"
   },
   "devDependencies": {
