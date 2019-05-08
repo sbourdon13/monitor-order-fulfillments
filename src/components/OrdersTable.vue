@@ -1,7 +1,5 @@
 <template>
   <div>
-    <!-- add date column ? -->
-
     <b-table
       striped
       hover
@@ -11,14 +9,15 @@
       :fields="fields"
       :current-page="currentPage"
       :per-page="perPage"
+      class="p-2"
     >
       <!-- Display badges for the status column -->
       <template slot="status" slot-scope="row">
-        <b-badge :variant="badgeColors[row.item.status]">{{ row.item.statusLabel.toUpperCase() }}</b-badge>
+        <b-badge :variant="badgeVariants[row.item.status]">{{ row.item.statusLabel.toUpperCase() }}</b-badge>
       </template>
 
       <!-- create a column of toggle buttons to display details  -->
-      <template slot="show_details" slot-scope="row">
+      <template slot="showDetails" slot-scope="row">
         <b-button
           size="sm"
           @click="row.toggleDetails"
@@ -39,7 +38,7 @@
             </b-col>
             <b-col>{{ event.description }}</b-col>
             <b-col>
-              <b-badge :variant="badgeColors[event.status]">{{ event.statusLabel.toUpperCase() }}</b-badge>
+              <b-badge :variant="badgeVariants[event.status]">{{ event.statusLabel.toUpperCase() }}</b-badge>
             </b-col>
           </b-row>
         </b-card>
@@ -47,7 +46,7 @@
 
       <!-- Table caption (number of references in the table) -->
       <template slot="table-caption">
-        <div class="mx-4">{{ items.length }} references.</div>
+        <div class="mx-4">{{ items.length }} reference(s).</div>
       </template>
     </b-table>
 
@@ -59,6 +58,7 @@
           :total-rows="items.length"
           :per-page="perPage"
           align="center"
+          v-if="items.length > perPage"
         ></b-pagination>
       </b-col>
     </b-row>
@@ -75,7 +75,7 @@ export default {
         { key: "description", sortable: false },
         { key: "operator", sortable: true },
         { key: "localTime", sortable: true },
-        { key: "show_details", sortable: false }
+        { key: "showDetails", sortable: false }
       ],
       currentPage: 1,
       perPage: 20
@@ -85,7 +85,7 @@ export default {
     items: Array,
     ordersByReference: Object,
     statusLabels: Object,
-    badgeColors: Object
+    badgeVariants: Object
   }
 };
 </script>

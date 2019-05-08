@@ -1,15 +1,19 @@
 <template>
   <div id="app">
     <b-container fluid>
-      <app-header :items="items" :statusLabels="statusLabels" :badgeColors="badgeColors"></app-header>
-      <orders-table
-        :items="items"
+      <app-header
+        :ordersTableItems="ordersTableItems"
         :statusLabels="statusLabels"
-        :badgeColors="badgeColors"
+        :badgeVariants="badgeVariants"
+      ></app-header>
+      <orders-table
+        :items="ordersTableItems"
+        :statusLabels="statusLabels"
+        :badgeVariants="badgeVariants"
         :ordersByReference="ordersByReference"
       ></orders-table>
       <b-alert
-        :variant="connectionColor[eventSourceStatus]"
+        :variant="connectionVariant[eventSourceStatus]"
         show
       >Connection status: {{ connectionStatus[eventSourceStatus] }}</b-alert>
     </b-container>
@@ -21,6 +25,7 @@ import OrdersTable from "./components/OrdersTable.vue";
 import AppHeader from "./components/Header.vue";
 
 import ReconnectingEventSource from "reconnecting-eventsource"; //implements autoreconnection
+// see https://github.com/fanout/reconnecting-eventsource
 
 export default {
   name: "app",
@@ -37,7 +42,7 @@ export default {
         DELIVERED: "Delivered",
         UPDATE_DATA: "Updata data"
       },
-      badgeColors: {
+      badgeVariants: {
         CREATED: "primary",
         TRANSMITTED: "secondary",
         IN_PREPARATION: "warning",
@@ -47,7 +52,6 @@ export default {
         DELIVERED: "success",
         UPDATE_DATA: "light"
       },
-      orderEventSource: false,
       eventSourceStatus: null,
       connectionStatus: [
         "Connecting...",
@@ -55,11 +59,11 @@ export default {
         "No connection",
         "Error, trying to reconnect"
       ],
-      connectionColor: ["primary", "success", "warning", "danger"]
+      connectionVariant: ["primary", "success", "warning", "danger"]
     };
   },
   computed: {
-    items() {
+    ordersTableItems() {
       let items = [];
       for (let reference in this.ordersByReference) {
         items.push(this.ordersByReference[reference].lastEvent);
@@ -72,20 +76,20 @@ export default {
   },
   methods: {
     setupStream() {
-      this.orderEventSource = new ReconnectingEventSource(
+      let orderEventSource = new ReconnectingEventSource(
         "http://localhost:8080",
         {
           withCredentials: false,
-          max_retry_time: 3000
+          max_retry_time: 3000 // maximum time to wait before attempting to reconnect, in ms
         }
       );
-      this.eventSourceStatus = this.orderEventSource.readyState; // CONNECTING (0)
+      this.eventSourceStatus = orderEventSource.readyState; // CONNECTING (0)
 
-      this.orderEventSource.onopen = event => {
+      orderEventSource.onopen = event => {
         this.eventSourceStatus = event.target.readyState; // OPEN (1)
       };
 
-      this.orderEventSource.addEventListener(
+      orderEventSource.addEventListener(
         "order_event",
         event => {
           let data = JSON.parse(event.data);
@@ -94,11 +98,11 @@ export default {
         false
       );
 
-      this.orderEventSource.onerror = event => {
+      orderEventSource.onerror = event => {
+        this.eventSourceStatus = 3; // custom error status
         if (event.target.readyState == EventSource.CLOSED) {
           this.eventSourceStatus = event.target.readyState; // CLOSED (2)
         }
-        this.eventSourceStatus = 3; // custom error status
       };
     },
     getOrderData(data) {
@@ -136,7 +140,7 @@ export default {
         this.ordersByReference[reference].history.push(order);
         this.ordersByReference[reference].lastEvent = order;
       } else {
-        this.$set(this.ordersByReference, reference, {
+        this.$set(this.ordersByReference, reference, { // $set is necessary to keep the ordersTableItems computed property reactive
           reference,
           history: [order],
           lastEvent: order

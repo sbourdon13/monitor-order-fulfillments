@@ -5,7 +5,7 @@
       <b-card
         v-for="statusData in cardsData"
         :key="statusData.status"
-        :bg-variant="badgeColors[statusData.status]"
+        :bg-variant="badgeVariants[statusData.status]"
         text-variant="white"
         :header="statusLabels[statusData]"
         class="text-center"
@@ -14,17 +14,15 @@
         <p class="m-0">{{ statusData.text }}</p>
       </b-card>
     </b-card-group>
-
-
   </div>
 </template>
 
 <script>
 export default {
   props: {
-    items: Array,
+    ordersTableItems: Array,
     statusLabels: Object,
-    badgeColors: Object
+    badgeVariants: Object
   },
   computed: {
     cardsData() {
@@ -54,7 +52,7 @@ export default {
   },
   methods: {
     numberOfReferencesWithStatus(status) {
-      return this.items.filter(item => item.status === status).length;
+      return this.ordersTableItems.filter(item => item.status === status).length;
     }
   }
 };
